@@ -1,5 +1,5 @@
 clear;
-
+addpath("Functions");
 % точное решение
 u_exact = @(hi,t)(t.^3+3.*t.^2+1).*(hi.^4+10.*hi+3); 
 
