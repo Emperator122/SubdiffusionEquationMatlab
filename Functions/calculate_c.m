@@ -1,5 +1,5 @@
 function result = calculate_c(n, alpha, sigma, sigmaStep)
-    result = zeros(n,1);
+    result = zeros(1,n);
     for k = 1:n
         result(k) = c(k, n, alpha, sigma, sigmaStep);
     end
