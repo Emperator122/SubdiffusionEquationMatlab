@@ -41,7 +41,7 @@ t = a_T:tau:b_T;
 hi = a_x:h:b_x;
 
 u = zeros(N+1, M+1); % первая для xi, вторая для t
-
+tic
 u(:, 1) = initialCondition(hi);
 for n = 1:M
     % вычислим sigma для данной итерации
@@ -55,9 +55,12 @@ for n = 1:M
     % необходимые значения
     step_coef = sigma./h.^2;
     sigmaStep = t(n)+sigma.*tau;
+    gamma_value = tau.^(-alpha(sigmaStep))./gamma(2-alpha(sigmaStep));
 
     % вычислим "c"
     c_values = calculate_c(n, alpha, sigma, sigmaStep);
+
+    unknown_coef = kaputo_der_unknown_coef(c_values, gamma_value);
 
     % загоним в матрицу краевые условия
     matrix(1,1) = 1;
@@ -67,25 +70,21 @@ for n = 1:M
     
     % загоним в матрицу остальные точки
     for i = 2:N
-        [known_part, unknown_coef] = kaputo_der(c_values, i, n, alpha, u, tau, sigmaStep);
+        known_part = kaputo_der_known_part(c_values, i, n, gamma_value, u);
         % для начала заполним саму матрицу
         matrix(i, i-1) = step_coef-unknown_coef./12;
         matrix(i, i) = -1.*(10.*unknown_coef./12 + 2.*step_coef);
         matrix(i, i+1) = step_coef-unknown_coef./12;
         
         % а затем столбец свободных членов
-        sum = known_part;
-        sum = sum - A_func(i, hi, f, sigmaStep);
-        sum = sum - (1-sigma).*(u(i+1, n)-2.*u(i, n)+u(i-1, n))./h.^2;
-        
-        % результат вычислений закидываем в столбец с.ч.
-        matrix_f(i) = sum;
+        matrix_f(i) = known_part - A_func(i, hi, f, sigmaStep) ...
+            - (1-sigma).*(u(i+1, n)-2.*u(i, n)+u(i-1, n))./h.^2;
     end
     % находим корни и записываем их на новый слой
     roots = matrix\matrix_f;
     u(:, n+1) = roots;
 end
-
+toc
 delta = abs(u_exact(hi', t)-u);
 %err_E = E(u, u_exact(hi', t))
 plot(hi, u(:, length(t)), hi, u_exact(hi', t(length(t))));
@@ -94,11 +93,11 @@ legend("Численное решение", "Точное решение");
 
 % Оператор A на известном слое сетки
 function result = A_mesh(i, n, u)
-    if i == 1 || i == size(u, 1)
-        result = u(i);
-        return;
+    if i == 1 || i == size(u,1)
+        result = u(i, 1:n);
+    else
+        result = (u(i+1,1:n)+10.*u(i,1:n)+u(i-1,1:n))./12;
     end
-    result = (u(i+1,n)+10.*u(i,n)+u(i-1,n))./12;
 end
 
 % Оператор A для произвольной функции
@@ -120,13 +119,13 @@ function result = A_func(i, x, f, t_point)
     end
 end
 
-function [known_part, unknown_coef] = kaputo_der(c_values, i, j, alpha, u, tau, sigmaStep)
-    known_part = -c_values(1).* A_mesh(i, j, u);
-        for k = 2:j
-            known_part = known_part + c_values(k).*...
-                (A_mesh(i, j-k+2, u) - A_mesh(i, j-k+1, u));
-        end
-    known_part = known_part .* tau.^(-alpha(sigmaStep)) ./ gamma(2-alpha(sigmaStep));
-    
-    unknown_coef = c_values(1).* tau.^(-alpha(sigmaStep)) ./ gamma(2-alpha(sigmaStep));
+function known_part = kaputo_der_known_part(c_values, i, j, gamma_value, u)
+        A_values = A_mesh(i, j, u);
+        known_part = (sum(c_values(2:j) .* ...
+            (A_values(j:-1:2)-A_values(j-1:-1:1)))-c_values(1).*A_values(j)) ...
+            .* gamma_value;    
+end
+
+function unknown_coef = kaputo_der_unknown_coef(c_values, gamma_value)
+    unknown_coef = c_values(1).* gamma_value;
 end

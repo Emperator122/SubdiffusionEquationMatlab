@@ -25,12 +25,12 @@ f = @(hi,t) ( 6.*t.^(3-alpha(t))./gamma(4-alpha(t)) + ...
 % Границы для t
 a_T = 0;
 b_T = 1;
-M = 640; % Колво разбиений отрезка [a_T; b_T]
+M = 6400; % Колво разбиений отрезка [a_T; b_T]
 
 % Границы для hi
 a_x = 0;
 b_x = pi;
-N = round(640*pi); % количества разбиений каждого отрезка
+N = round(80*pi); % количества разбиений каждого отрезка
 
 
 % Расчеты
@@ -81,6 +81,7 @@ for n = 1:M
     end
     % находим корни и записываем их на новый слой
     roots = SweepMethod(matrix, matrix_f);
+%     roots = tridiagonal(matrix, matrix_f);
 %     roots = matrix\matrix_f;
     u(:, n+1) = roots;
 end
