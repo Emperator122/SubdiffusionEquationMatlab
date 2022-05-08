@@ -25,12 +25,12 @@ f = @(hi,t) ( 6.*t.^(3-alpha(t))./gamma(4-alpha(t)) + ...
 % Границы для t
 a_T = 0;
 b_T = 1;
-M = 400; % Колво разбиений отрезка [a_T; b_T]
+M = 6400; % Колво разбиений отрезка [a_T; b_T]
 
 % Границы для hi
 a_x = 0;
 b_x = pi;
-N = round(20*pi); % количества разбиений каждого отрезка
+N = round(80*pi); % количества разбиений каждого отрезка
 
 
 % Расчеты
@@ -41,9 +41,13 @@ t = a_T:tau:b_T;
 hi = a_x:h:b_x;
 
 u = zeros(N+1, M+1); % первая для xi, вторая для t
+u_A = zeros(N+1, M+1); % сетка с примененным оператором A
 tic
 u(:, 1) = initialCondition(hi);
 for n = 1:M
+    % применим оператор усреднения к последнему слою сетки
+    u_A(:,n) = A_mesh(u(:, n));
+
     % вычислим sigma для данной итерации
     sigma = get_sigma_Newton(alpha, alpha_der, t, n, tau, 0.001);
 %     sigma = get_sigma(alpha, t, n, tau, 0.001);
@@ -70,7 +74,7 @@ for n = 1:M
     
     % загоним в матрицу остальные точки
     for i = 2:N
-        known_part = kaputo_der_known_part(c_values, i, n, gamma_value, u);
+        known_part = kaputo_der_known_part(c_values, i, n, gamma_value, u_A);
         % для начала заполним саму матрицу
         matrix(i, i-1) = step_coef-unknown_coef./12;
         matrix(i, i) = -1.*(10.*unknown_coef./12 + 2.*step_coef);
@@ -92,12 +96,9 @@ legend("Численное решение", "Точное решение");
 
 
 % Оператор A на известном слое сетки
-function result = A_mesh(i, n, u)
-    if i == 1 || i == size(u,1)
-        result = u(i, 1:n);
-    else
-        result = (u(i+1,1:n)+10.*u(i,1:n)+u(i-1,1:n))./12;
-    end
+function result = A_mesh(u_layer)
+    len = length(u_layer);
+    result = [u_layer(1); (u_layer(1:len-2)+10.*u_layer(2:len-1)+u_layer(3:len))./12; u_layer(len)];
 end
 
 % Оператор A для произвольной функции
@@ -119,10 +120,9 @@ function result = A_func(i, x, f, t_point)
     end
 end
 
-function known_part = kaputo_der_known_part(c_values, i, j, gamma_value, u)
-        A_values = A_mesh(i, j, u);
+function known_part = kaputo_der_known_part(c_values, i, j, gamma_value, u_A)
         known_part = (sum(c_values(2:j) .* ...
-            (A_values(j:-1:2)-A_values(j-1:-1:1)))-c_values(1).*A_values(j)) ...
+            (u_A(i, j:-1:2)-u_A(i, j-1:-1:1)))-c_values(1).*u_A(i, j)) ...
             .* gamma_value;    
 end
 
