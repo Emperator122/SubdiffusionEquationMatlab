@@ -20,12 +20,12 @@ f = @(hi,t) ( 6.*t.^(3-alpha(t))./gamma(4-alpha(t)) + ...
 % Границы для t
 a_T = 0;
 b_T = 1;
-M = 100; % Колво разбиений отрезка [a_T; b_T]
+M = 640; % Колво разбиений отрезка [a_T; b_T]
 
 % Границы для hi
 a_x = 0;
 b_x = pi;
-N = round(100*pi); % количества разбиений каждого отрезка
+N = round(640*pi); % количества разбиений каждого отрезка
 
 
 % Расчеты
@@ -35,10 +35,16 @@ h = (b_x-a_x)/N;
 t = a_T:tau:b_T;
 hi = a_x:h:b_x;
 
-u = zeros(N+1, M+1); % первая для xi, вторая для t
+t_layer = length(t);
 
+u = zeros(N+1, M+1); % первая для xi, вторая для t
+tic
 u(:, 1) = initialCondition(hi);
 for n = 1:M
+    step_coef = 1./h.^2;
+    a_values = calculate_a(n, alpha, t);
+    gamma_value = tau.^(-alpha(t(n+1))) ./ gamma(2-alpha(t(n+1)));
+    unknown_coef = kaputo_der_unknown_coef(a_values, gamma_value);
     % зададим матрицу и столбец свободных членов для метода прогонки
     matrix = zeros(N+1, N+1);
     matrix_f = zeros(N+1, 1);
@@ -51,42 +57,31 @@ for n = 1:M
     
     % загоним в матрицу остальные точки
     for i = 2:N
-        step_coef = 1./h.^2;
-        gamma_coef = tau.^(-alpha(t(n+1))) ./ gamma(2-alpha(t(n+1)));
+        known_part = kaputo_der_known_part(a_values, i, n, u, gamma_value);
         % для начала заполним саму матрицу
         matrix(i, i-1) = step_coef;
-        matrix(i, i) = -1.*(a(1, n, alpha, t).*gamma_coef + 2./h.^2);
+        matrix(i, i) = -1.*(unknown_coef + 2./h.^2);
         matrix(i, i+1) = step_coef;
         
-        % а затем столбец свободных членов
-        % для заполнения столбца с.ч. необходимо вычислять сумму
-        % вычислим ее
-        sum = -1.*a(1,n, alpha, t).*u(i, n);
-        for k = 2:n
-            sum = sum + a(k, n, alpha, t).*(u(i, n-k+2) - u(i, n-k+1));
-        end
-        sum = sum .* gamma_coef;
-        sum = sum - f(hi(i), t(n+1));
-        
-        % результат вычислений закидываем в столбец с.ч.
-        matrix_f(i) = sum;
+        matrix_f(i) = known_part - f(hi(i), t(n+1));
     end
     % находим корни и записываем их на новый слой
-    roots = matrix\matrix_f;
+    %     roots = SweepMethod(matrix, matrix_f);
+    roots = tridiagonal(matrix, matrix_f);
+%     roots = matrix\matrix_f;
     u(:, n+1) = roots;
 end
-
+toc
 delta = abs(u_exact(hi', t)-u);
-% err_E = E(u, u_exact(hi', t))
+plot(hi, u(:, t_layer), hi, u_exact(hi', t(t_layer)));
+legend("Численное решение", "Точное решение");
 
 
+function known_part = kaputo_der_known_part(a_values, i, j, u, gamma_value)
+        known_part = (sum(a_values(2:j) .* (u(i, j:-1:2)-u(i, j-1:-1:1)))-a_values(1).*u(i, j)) ...
+        .* gamma_value;    
+end
 
-% "a" переписана под индексацию с единицы
-function result = a(k, n, alpha, t)
-    if k == 1
-       result = 1; 
-    else
-        k = k-1;
-        result = (k+1).^(1-alpha(t(n+1)))-k.^(1-alpha(t(n+1)));
-    end
+function unknown_coef = kaputo_der_unknown_coef(a_values, gamma_value)
+    unknown_coef = a_values(1).* gamma_value;
 end
