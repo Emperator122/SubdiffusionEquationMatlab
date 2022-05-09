@@ -11,7 +11,9 @@ leftBound = @(t)0;
 rightBound = @(t)0;
 
 % alpha(t)
-alpha = @(t)(2+sin(t))./4;
+% alpha = @(t)(2+sin(t))./4;
+% alpha = @(t)1-t.^2;
+alpha = @(t)exp(-t);
 
 % f(hi,t)
 f = @(hi,t) ( 6.*t.^(3-alpha(t))./gamma(4-alpha(t)) + ...
@@ -20,12 +22,12 @@ f = @(hi,t) ( 6.*t.^(3-alpha(t))./gamma(4-alpha(t)) + ...
 % Границы для t
 a_T = 0;
 b_T = 1;
-M = 640; % Колво разбиений отрезка [a_T; b_T]
+M = 40; % Колво разбиений отрезка [a_T; b_T]
 
 % Границы для hi
 a_x = 0;
 b_x = pi;
-N = round(640*pi); % количества разбиений каждого отрезка
+N = round(640*pi)*0 + 5000; % количества разбиений каждого отрезка
 
 
 % Расчеты
@@ -75,6 +77,9 @@ toc
 delta = abs(u_exact(hi', t)-u);
 plot(hi, u(:, t_layer), hi, u_exact(hi', t(t_layer)));
 legend("Численное решение", "Точное решение");
+
+max_delta = max(max(delta))
+clipboard('copy',max_delta)
 
 
 function known_part = kaputo_der_known_part(a_values, i, j, u, gamma_value)

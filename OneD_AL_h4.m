@@ -93,7 +93,8 @@ delta = abs(u_exact(hi', t)-u);
 %err_E = E(u, u_exact(hi', t))
 plot(hi, u(:, length(t)), hi, u_exact(hi', t(length(t))));
 legend("Численное решение", "Точное решение");
-
+max_delta = max(max(delta))
+clipboard('copy',max_delta)
 
 % Оператор A на известном слое сетки
 function result = A_mesh(u_layer)

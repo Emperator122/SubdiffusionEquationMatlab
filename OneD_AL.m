@@ -25,12 +25,12 @@ f = @(hi,t) ( 6.*t.^(3-alpha(t))./gamma(4-alpha(t)) + ...
 % Границы для t
 a_T = 0;
 b_T = 1;
-M = 6400; % Колво разбиений отрезка [a_T; b_T]
+M = 1280; % Колво разбиений отрезка [a_T; b_T]
 
 % Границы для hi
 a_x = 0;
 b_x = pi;
-N = round(80*pi); % количества разбиений каждого отрезка
+N = round(1280*pi); % количества разбиений каждого отрезка
 
 
 % Расчеты
@@ -88,8 +88,11 @@ end
 toc
 
 delta = abs(u_exact(hi', t)-u);
-plot(hi, u(:, length(t)), hi, u_exact(hi', t(length(t))));
+plot(hi, u(:, length(t)), 'r-', hi, u_exact(hi', t(length(t))), 'b--');
 legend("Численное решение", "Точное решение");
+
+max_delta = max(max(delta))
+clipboard('copy',max_delta)
 
 function known_part = kaputo_der_known_part(c_values, i, j, u, gamma_value)
         known_part = (sum(c_values(2:j) .* (u(i, j:-1:2)-u(i, j-1:-1:1)))-c_values(1).*u(i, j)) ...
